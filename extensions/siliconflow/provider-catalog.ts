@@ -3,7 +3,7 @@ import {
   buildSiliconFlowModelDefinition,
   SILICONFLOW_BASE_URL,
   SILICONFLOW_MODEL_CATALOG,
-} from "./api.js";
+} from "./models.js";
 
 export function buildSiliconFlowProvider(): ModelProviderConfig {
   return {
