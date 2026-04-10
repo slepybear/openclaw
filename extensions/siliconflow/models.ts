@@ -2,13 +2,6 @@ import type { ModelDefinitionConfig } from "openclaw/plugin-sdk/provider-model-s
 
 export const SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1";
 
-const SILICONFLOW_COST = {
-  input: 0.1,
-  output: 0.1,
-  cacheRead: 0.01,
-  cacheWrite: 0,
-};
-
 export const SILICONFLOW_MODEL_CATALOG: ModelDefinitionConfig[] = [
   {
     id: "Qwen/Qwen2.5-7B-Instruct",
@@ -17,7 +10,12 @@ export const SILICONFLOW_MODEL_CATALOG: ModelDefinitionConfig[] = [
     input: ["text"],
     contextWindow: 131072,
     maxTokens: 8192,
-    cost: SILICONFLOW_COST,
+    cost: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    },
     compat: { supportsUsageInStreaming: true },
   },
   {
@@ -27,7 +25,12 @@ export const SILICONFLOW_MODEL_CATALOG: ModelDefinitionConfig[] = [
     input: ["text"],
     contextWindow: 131072,
     maxTokens: 8192,
-    cost: SILICONFLOW_COST,
+    cost: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    },
     compat: { supportsUsageInStreaming: true },
   },
   {
@@ -37,7 +40,12 @@ export const SILICONFLOW_MODEL_CATALOG: ModelDefinitionConfig[] = [
     input: ["text"],
     contextWindow: 131072,
     maxTokens: 8192,
-    cost: SILICONFLOW_COST,
+    cost: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    },
     compat: { supportsUsageInStreaming: true },
   },
   {
@@ -47,7 +55,12 @@ export const SILICONFLOW_MODEL_CATALOG: ModelDefinitionConfig[] = [
     input: ["text"],
     contextWindow: 131072,
     maxTokens: 65536,
-    cost: SILICONFLOW_COST,
+    cost: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    },
     compat: { supportsUsageInStreaming: true },
   },
 ];

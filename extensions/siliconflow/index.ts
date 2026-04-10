@@ -41,6 +41,6 @@ export default defineSingleProviderPluginEntry({
         providerId: PROVIDER_ID,
       }),
     matchesContextOverflowError: ({ errorMessage }) =>
-      /\bsiliconflow\b.*(?:input.*too long|context.*exceed)/i.test(errorMessage),
+      /\b(?:input.*too long|context.*exceed|maximum.*context|token.*limit)/i.test(errorMessage),
   },
 });
