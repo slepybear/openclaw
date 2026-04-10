@@ -154,6 +154,7 @@ export type SlackMediaResult = {
   path: string;
   contentType?: string;
   placeholder: string;
+  fileId?: string;
 };
 
 export const MAX_SLACK_MEDIA_FILES = 8;
@@ -269,6 +270,7 @@ export async function resolveSlackMedia(params: {
           path: saved.path,
           ...(contentType ? { contentType } : {}),
           placeholder: label ? `[Slack file: ${label}]` : "[Slack file]",
+          fileId: file.id,
         };
       } catch {
         return null;
