@@ -10,9 +10,10 @@ import type {
   OAuthCredential,
   AuthProfileStore,
 } from "../agents/auth-profiles/types.js";
+import type { AgentHarness } from "../agents/harness/types.js";
 import type { ModelCatalogEntry } from "../agents/model-catalog.js";
 import type { FailoverReason } from "../agents/pi-embedded-helpers/types.js";
-import type { ProviderRequestTransportOverrides } from "../agents/provider-request-config.js";
+import type { ModelProviderRequestTransportOverrides } from "../agents/provider-request-config.js";
 import type { ProviderSystemPromptContribution } from "../agents/system-prompt-contribution.js";
 import type { PromptMode } from "../agents/system-prompt.js";
 import type { ToolFsPolicy } from "../agents/tool-fs-policy.js";
@@ -22,13 +23,13 @@ import type { FinalizedMsgContext } from "../auto-reply/templating.js";
 import type { ThinkLevel } from "../auto-reply/thinking.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
 import type { ChannelId, ChannelPlugin } from "../channels/plugins/types.js";
-import type { OpenClawConfig } from "../config/config.js";
 import type {
   CliBackendConfig,
   ModelProviderAuthMode,
   ModelProviderConfig,
 } from "../config/types.js";
 import type { ModelCompatConfig } from "../config/types.models.js";
+import type { OpenClawConfig } from "../config/types.openclaw.js";
 import type { TtsAutoMode } from "../config/types.tts.js";
 import type { OperatorScope } from "../gateway/method-scopes.js";
 import type { GatewayRequestHandler } from "../gateway/server-methods/types.js";
@@ -85,6 +86,7 @@ import type { PluginRuntime } from "./runtime/types.js";
 
 export type { PluginRuntime } from "./runtime/types.js";
 export type { AnyAgentTool } from "../agents/tools/common.js";
+export type { AgentHarness } from "../agents/harness/types.js";
 
 export type ProviderAuthOptionBag = {
   token?: string;
@@ -479,7 +481,7 @@ export type ProviderPrepareRuntimeAuthContext = {
 export type ProviderPreparedRuntimeAuth = {
   apiKey: string;
   baseUrl?: string;
-  request?: ProviderRequestTransportOverrides;
+  request?: ModelProviderRequestTransportOverrides;
   expiresAt?: number;
 };
 
@@ -1093,6 +1095,24 @@ export type ProviderSystemPromptContributionContext = {
   agentId?: string;
 };
 
+export type ProviderTransformSystemPromptContext = ProviderSystemPromptContributionContext & {
+  systemPrompt: string;
+};
+
+export type PluginTextReplacement = {
+  from: string | RegExp;
+  to: string;
+};
+
+export type PluginTextTransforms = {
+  /** Rewrites applied to outbound prompt text before provider/CLI transport. */
+  input?: PluginTextReplacement[];
+  /** Rewrites applied to inbound assistant text before OpenClaw consumes it. */
+  output?: PluginTextReplacement[];
+};
+
+export type PluginTextTransformRegistration = PluginTextTransforms;
+
 /** Text-inference provider capability registered by a plugin. */
 export type ProviderPlugin = {
   id: string;
@@ -1466,6 +1486,22 @@ export type ProviderPlugin = {
     ctx: ProviderSystemPromptContributionContext,
   ) => ProviderSystemPromptContribution | null | undefined;
   /**
+   * Provider-owned final system-prompt transform.
+   *
+   * Use this sparingly when a provider transport needs small compatibility
+   * rewrites after OpenClaw has assembled the complete prompt. Return
+   * `undefined`/`null` to leave the prompt unchanged.
+   */
+  transformSystemPrompt?: (ctx: ProviderTransformSystemPromptContext) => string | null | undefined;
+  /**
+   * Provider-owned bidirectional text replacements.
+   *
+   * `input` applies to system prompts and text message content before transport.
+   * `output` applies to assistant text deltas/final text before OpenClaw handles
+   * its own control markers or channel delivery.
+   */
+  textTransforms?: PluginTextTransforms;
+  /**
    * Provider-owned global config defaults.
    *
    * Use this when config materialization needs provider-specific defaults that
@@ -1820,6 +1856,8 @@ export type PluginCommandContext = {
   sessionKey?: string;
   /** Ephemeral host session id for the active conversation when available. */
   sessionId?: string;
+  /** Transcript file for the active OpenClaw session when available. */
+  sessionFile?: string;
   /** Raw command arguments after the command name */
   args?: string;
   /** The full normalized command body */
@@ -1960,6 +1998,7 @@ export type PluginInteractiveHandlerRegistration = PluginInteractiveRegistration
 
 export type OpenClawPluginHttpRouteAuth = "gateway" | "plugin";
 export type OpenClawPluginHttpRouteMatch = "exact" | "prefix";
+export type OpenClawPluginGatewayRuntimeScopeSurface = "write-default" | "trusted-operator";
 
 export type OpenClawPluginHttpRouteHandler = (
   req: IncomingMessage,
@@ -1971,6 +2010,7 @@ export type OpenClawPluginHttpRouteParams = {
   handler: OpenClawPluginHttpRouteHandler;
   auth: OpenClawPluginHttpRouteAuth;
   match?: OpenClawPluginHttpRouteMatch;
+  gatewayRuntimeScopeSurface?: OpenClawPluginGatewayRuntimeScopeSurface;
   replaceExisting?: boolean;
 };
 
@@ -2085,6 +2125,28 @@ export type CliBackendPlugin = {
    * shapes need to stay working.
    */
   normalizeConfig?: (config: CliBackendConfig) => CliBackendConfig;
+  /**
+   * Backend-owned final system-prompt transform.
+   *
+   * Use this for tiny CLI-specific compatibility rewrites without replacing
+   * the generic CLI runner or prompt builder.
+   */
+  transformSystemPrompt?: (ctx: {
+    config?: OpenClawConfig;
+    workspaceDir?: string;
+    provider: string;
+    modelId: string;
+    modelDisplay: string;
+    agentId?: string;
+    systemPrompt: string;
+  }) => string | null | undefined;
+  /**
+   * Backend-owned bidirectional text replacements.
+   *
+   * `input` applies to the system prompt and user prompt passed to the CLI.
+   * `output` applies to parsed/streamed assistant text from the CLI.
+   */
+  textTransforms?: PluginTextTransforms;
 };
 
 export type OpenClawPluginChannelRegistration = {
@@ -2193,6 +2255,8 @@ export type OpenClawPluginApi = {
   registerService: (service: OpenClawPluginService) => void;
   /** Register a text-only CLI backend used by the local CLI runner. */
   registerCliBackend: (backend: CliBackendPlugin) => void;
+  /** Register plugin-owned prompt/message compatibility text transforms. */
+  registerTextTransforms: (transforms: PluginTextTransformRegistration) => void;
   /** Register a lightweight config migration that can run before plugin runtime loads. */
   registerConfigMigration: (migrate: PluginConfigMigration) => void;
   /** Register a lightweight config probe that can auto-enable this plugin generically. */
@@ -2236,6 +2300,8 @@ export type OpenClawPluginApi = {
   registerCompactionProvider: (
     provider: import("./compaction-provider.js").CompactionProvider,
   ) => void;
+  /** Register an agent harness implementation. */
+  registerAgentHarness: (harness: AgentHarness) => void;
   /** Register the active memory capability for this memory plugin (exclusive slot). */
   registerMemoryCapability: (
     capability: import("./memory-state.js").MemoryPluginCapability,
