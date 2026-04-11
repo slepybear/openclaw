@@ -2,7 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
-import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveConfigDir } from "../utils.js";
 import { resolveRequiredHomeDir } from "./home-dir.js";
 import {
@@ -11,14 +10,7 @@ import {
   normalizeEnvVarKey,
 } from "./host-env-security.js";
 
-let log: ReturnType<typeof createSubsystemLogger> | null = null;
-
-function getLog(): ReturnType<typeof createSubsystemLogger> {
-  if (!log) {
-    log = createSubsystemLogger("dotenv");
-  }
-  return log;
-}
+let dotenvReentrant = false;
 
 const BLOCKED_WORKSPACE_DOTENV_KEYS = new Set([
   "ALL_PROXY",
@@ -136,7 +128,7 @@ function readDotEnvFile(params: {
       const code =
         error && typeof error === "object" && "code" in error ? String(error.code) : undefined;
       if (code !== "ENOENT") {
-        getLog().warn(`Failed to read ${params.filePath}: ${String(error)}`);
+        console.warn(`[dotenv] Failed to read ${params.filePath}: ${String(error)}`);
       }
     }
     return null;
@@ -147,7 +139,7 @@ function readDotEnvFile(params: {
     parsed = dotenv.parse(content);
   } catch (error) {
     if (!params.quiet) {
-      getLog().warn(`Failed to parse ${params.filePath}: ${String(error)}`);
+      console.warn(`[dotenv] Failed to parse ${params.filePath}: ${String(error)}`);
     }
     return null;
   }
@@ -235,9 +227,16 @@ function loadParsedDotEnvFiles(files: LoadedDotEnvFile[]) {
     if (keys.length === 0) {
       continue;
     }
-    getLog().warn(
-      `Conflicting values in ${conflict.keptPath} and ${conflict.ignoredPath} for ${keys.join(", ")}; keeping ${conflict.keptPath}.`,
-    );
+    if (!dotenvReentrant) {
+      dotenvReentrant = true;
+      try {
+        console.warn(
+          `[dotenv] Conflicting values in ${conflict.keptPath} and ${conflict.ignoredPath} for ${keys.join(", ")}; keeping ${conflict.keptPath}.`,
+        );
+      } finally {
+        dotenvReentrant = false;
+      }
+    }
   }
 }
 

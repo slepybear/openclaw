@@ -5,16 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { loadCliDotEnv } from "../cli/dotenv.js";
 import { loadDotEnv, loadWorkspaceDotEnvFile } from "./dotenv.js";
 
-const loggerMocks = vi.hoisted(() => ({
-  warn: vi.fn(),
-}));
-
-vi.mock("../logging/subsystem.js", () => ({
-  createSubsystemLogger: () => ({
-    warn: loggerMocks.warn,
-  }),
-}));
-
 async function writeEnvFile(filePath: string, contents: string) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, contents, "utf8");
@@ -122,16 +112,16 @@ describe("loadDotEnv", () => {
         vi.spyOn(process, "cwd").mockReturnValue(cwdDir);
         delete process.env.FOO;
         delete process.env.BAR;
-        loggerMocks.warn.mockClear();
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
         loadDotEnv({ quiet: true });
 
         expect(process.env.FOO).toBe("from-global");
         expect(process.env.BAR).toBe("from-gateway");
-        expect(loggerMocks.warn).toHaveBeenCalledWith(
+        expect(warn).toHaveBeenCalledWith(
           expect.stringContaining("Conflicting values in"),
         );
-        expect(loggerMocks.warn).toHaveBeenCalledWith(expect.stringContaining("gateway.env"));
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("gateway.env"));
       });
     });
   });
@@ -148,12 +138,12 @@ describe("loadDotEnv", () => {
         );
 
         vi.spyOn(process, "cwd").mockReturnValue(cwdDir);
-        loggerMocks.warn.mockClear();
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
         loadDotEnv({ quiet: true });
 
         expect(process.env.FOO).toBe("from-shell");
-        expect(loggerMocks.warn).not.toHaveBeenCalled();
+        expect(warn).not.toHaveBeenCalled();
       });
     });
   });
