@@ -41,7 +41,7 @@ export function collectActionMediaSourceHints(args: Record<string, unknown>): st
   const sources: string[] = [];
   for (const key of ACTION_MEDIA_SOURCE_PARAM_KEYS) {
     const source = typeof args[key] === "string" ? args[key] : undefined;
-    if (normalizeOptionalString(source)) {
+    if (source && normalizeOptionalString(source)) {
       sources.push(source);
     }
   }
