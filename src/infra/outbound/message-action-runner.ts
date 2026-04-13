@@ -42,6 +42,7 @@ import {
 import type { OutboundSendDeps } from "./deliver.js";
 import { normalizeMessageActionInput } from "./message-action-normalization.js";
 import {
+  collectActionMediaSourceHints,
   hydrateAttachmentParamsForAction,
   normalizeSandboxMediaList,
   normalizeSandboxMediaParams,
@@ -203,19 +204,6 @@ async function resolveGatewayActionIdempotencyKey(idempotencyKey?: string): Prom
   const { randomIdempotencyKey } = await loadMessageActionGatewayRuntime();
   return randomIdempotencyKey();
 }
-
-function collectActionMediaSourceHints(params: Record<string, unknown>): string[] {
-  const sources: string[] = [];
-  for (const key of ["media", "mediaUrl", "path", "filePath", "fileUrl", "image", "avatarPath", "avatar_path", "avatarUrl", "avatar_url"] as const) {
-    const source = typeof params[key] === "string" ? params[key] : undefined;
-    const normalized = normalizeOptionalString(source);
-    if (normalized && source) {
-      sources.push(source);
-    }
-  }
-  return sources;
-}
-
 function applyCrossContextMessageDecoration({
   params,
   message,

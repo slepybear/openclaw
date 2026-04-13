@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OpenClawConfig } from "../../config/config.js";
 import {
+  collectActionMediaSourceHints,
   hydrateAttachmentParamsForAction,
   normalizeSandboxMediaList,
   normalizeSandboxMediaParams,
@@ -127,6 +128,24 @@ describe("message action media helpers", () => {
     } finally {
       await fs.rm(sandboxRoot, { recursive: true, force: true });
     }
+  });
+
+  it("collects host media source hints from the shared media-source key set", () => {
+    expect(
+      collectActionMediaSourceHints({
+        media: " /workspace/uploads/photo.png ",
+        filePath: "",
+        image: "file:///workspace/assets/event-cover.png",
+        avatarPath: "/workspace/avatars/profile.png",
+        avatar_url: "mxc://matrix.org/abc123def456",
+        ignored: "/workspace/not-included.png",
+      }),
+    ).toEqual([
+      " /workspace/uploads/photo.png ",
+      "file:///workspace/assets/event-cover.png",
+      "/workspace/avatars/profile.png",
+      "mxc://matrix.org/abc123def456",
+    ]);
   });
 
   maybeIt("normalizes Matrix snake_case avatar_path and avatar_url aliases", async () => {

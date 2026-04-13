@@ -13,10 +13,11 @@ import {
 import { extensionForMime } from "../../media/mime.js";
 import { loadWebMedia } from "../../media/web-media.js";
 import { readBooleanParam as readBooleanParamShared } from "../../plugin-sdk/boolean-param.js";
+import { normalizeOptionalString } from "../../shared/string-coerce.js";
 
 export const readBooleanParam = readBooleanParamShared;
 
-const SANDBOX_MEDIA_PARAM_KEYS = [
+export const ACTION_MEDIA_SOURCE_PARAM_KEYS = [
   "media",
   "path",
   "filePath",
@@ -31,9 +32,20 @@ const SANDBOX_MEDIA_PARAM_KEYS = [
 
 function readMediaParam(
   args: Record<string, unknown>,
-  key: (typeof SANDBOX_MEDIA_PARAM_KEYS)[number],
+  key: (typeof ACTION_MEDIA_SOURCE_PARAM_KEYS)[number],
 ): string | undefined {
   return readStringParam(args, key, { trim: false });
+}
+
+export function collectActionMediaSourceHints(args: Record<string, unknown>): string[] {
+  const sources: string[] = [];
+  for (const key of ACTION_MEDIA_SOURCE_PARAM_KEYS) {
+    const source = typeof args[key] === "string" ? args[key] : undefined;
+    if (normalizeOptionalString(source)) {
+      sources.push(source);
+    }
+  }
+  return sources;
 }
 
 function readAttachmentMediaHint(args: Record<string, unknown>): string | undefined {
@@ -236,7 +248,7 @@ export async function normalizeSandboxMediaParams(params: {
 }): Promise<void> {
   const sandboxRoot =
     params.mediaPolicy.mode === "sandbox" ? params.mediaPolicy.sandboxRoot.trim() : undefined;
-  for (const key of SANDBOX_MEDIA_PARAM_KEYS) {
+  for (const key of ACTION_MEDIA_SOURCE_PARAM_KEYS) {
     const raw = readMediaParam(params.args, key);
     if (!raw) {
       continue;
