@@ -92,6 +92,12 @@ describe("matrixMessageActions", () => {
 
     expect(actions).toContain(profileAction);
     expect(supportsAction({ action: profileAction } as never)).toBe(true);
+    expect(discovery.mediaSourceParams).toEqual([
+      "avatarUrl",
+      "avatar_url",
+      "avatarPath",
+      "avatar_path",
+    ]);
     expect(properties.displayName).toBeDefined();
     expect(properties.avatarUrl).toBeDefined();
     expect(properties.avatarPath).toBeDefined();

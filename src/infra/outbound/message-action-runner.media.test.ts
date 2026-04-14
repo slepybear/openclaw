@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { Type } from "@sinclair/typebox";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonResult } from "../../agents/tools/common.js";
 import type { ChannelPlugin } from "../../channels/plugins/types.js";
@@ -520,6 +521,105 @@ describe("runMessageAction media behavior", () => {
           ...testCase,
           cfg: { tools: { fs: { workspaceOnly: true } } },
         });
+      }
+    });
+  });
+
+  describe("plugin-owned media-source discovery routing", () => {
+    const profilePlugin: ChannelPlugin = {
+      ...createChannelTestPluginBase({
+        id: "profile-demo",
+        label: "Profile Demo",
+        capabilities: { chatTypes: ["direct"] },
+        config: {
+          listAccountIds: () => ["default"],
+          isConfigured: () => true,
+        },
+      }),
+      actions: {
+        describeMessageTool: () => ({
+          actions: ["set-profile"],
+          mediaSourceParams: ["avatarPath", "avatarUrl"],
+          schema: {
+            properties: {
+              avatarPath: Type.Optional(Type.String({ description: "Local avatar path" })),
+              avatarUrl: Type.Optional(Type.String({ description: "Remote avatar URL" })),
+              displayName: Type.Optional(Type.String()),
+            },
+          },
+        }),
+        supportsAction: ({ action }) => action === "set-profile",
+        handleAction: async ({ params, mediaLocalRoots }) =>
+          jsonResult({
+            ok: true,
+            avatarPath: params.avatarPath,
+            avatarUrl: params.avatarUrl,
+            mediaLocalRoots,
+          }),
+      },
+    };
+
+    beforeEach(() => {
+      setActivePluginRegistry(
+        createTestRegistry([
+          {
+            pluginId: "profile-demo",
+            source: "test",
+            plugin: profilePlugin,
+          },
+        ]),
+      );
+    });
+
+    afterEach(() => {
+      setActivePluginRegistry(createTestRegistry([]));
+    });
+
+    it("rewrites plugin-owned sandbox media params and preserves mxc URLs", async () => {
+      await withSandbox(async (sandboxDir) => {
+        const result = await runMessageAction({
+          cfg: {} as OpenClawConfig,
+          action: "set-profile",
+          params: {
+            channel: "profile-demo",
+            avatarPath: "/workspace/avatars/profile.png",
+            avatarUrl: "mxc://matrix.org/abc123def456",
+          },
+          sandboxRoot: sandboxDir,
+        });
+
+        expect(result.kind).toBe("action");
+        expect(result.payload).toMatchObject({
+          ok: true,
+          avatarPath: path.join(sandboxDir, "avatars", "profile.png"),
+          avatarUrl: "mxc://matrix.org/abc123def456",
+        });
+      });
+    });
+
+    it("routes plugin-owned host media hints into local-root expansion", async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "msg-profile-media-"));
+      try {
+        const avatarPath = path.join(tempDir, "profile.png");
+        await fs.writeFile(avatarPath, onePixelPng);
+
+        const result = await runMessageAction({
+          cfg: {
+            tools: { fs: { workspaceOnly: false } },
+          } as OpenClawConfig,
+          action: "set-profile",
+          params: {
+            channel: "profile-demo",
+            avatarPath,
+          },
+        });
+
+        expect(result.kind).toBe("action");
+        expect((result.payload as { mediaLocalRoots?: string[] }).mediaLocalRoots).toEqual(
+          expect.arrayContaining([tempDir]),
+        );
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
       }
     });
   });

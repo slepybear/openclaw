@@ -13,6 +13,12 @@ import {
 
 const cfg = {} as OpenClawConfig;
 const maybeIt = process.platform === "win32" ? it.skip : it;
+const matrixMediaSourceParamKeys = [
+  "avatarPath",
+  "avatar_path",
+  "avatarUrl",
+  "avatar_url",
+] as const;
 
 describe("message action media helpers", () => {
   it("prefers sandbox media policy when sandbox roots are non-blank", () => {
@@ -119,6 +125,7 @@ describe("message action media helpers", () => {
           mode: "sandbox",
           sandboxRoot,
         },
+        extraParamKeys: matrixMediaSourceParamKeys,
       });
 
       expect(args).toMatchObject({
@@ -132,14 +139,17 @@ describe("message action media helpers", () => {
 
   it("collects host media source hints from the shared media-source key set", () => {
     expect(
-      collectActionMediaSourceHints({
-        media: " /workspace/uploads/photo.png ",
-        filePath: "",
-        image: "file:///workspace/assets/event-cover.png",
-        avatarPath: "/workspace/avatars/profile.png",
-        avatar_url: "mxc://matrix.org/abc123def456",
-        ignored: "/workspace/not-included.png",
-      }),
+      collectActionMediaSourceHints(
+        {
+          media: " /workspace/uploads/photo.png ",
+          filePath: "",
+          image: "file:///workspace/assets/event-cover.png",
+          avatarPath: "/workspace/avatars/profile.png",
+          avatar_url: "mxc://matrix.org/abc123def456",
+          ignored: "/workspace/not-included.png",
+        },
+        matrixMediaSourceParamKeys,
+      ),
     ).toEqual([
       " /workspace/uploads/photo.png ",
       "file:///workspace/assets/event-cover.png",
@@ -162,6 +172,7 @@ describe("message action media helpers", () => {
           mode: "sandbox",
           sandboxRoot,
         },
+        extraParamKeys: matrixMediaSourceParamKeys,
       });
 
       expect(args).toMatchObject({
@@ -187,6 +198,7 @@ describe("message action media helpers", () => {
           mode: "sandbox",
           sandboxRoot,
         },
+        extraParamKeys: matrixMediaSourceParamKeys,
       });
 
       expect(args).toMatchObject({
@@ -212,6 +224,7 @@ describe("message action media helpers", () => {
           mode: "sandbox",
           sandboxRoot,
         },
+        extraParamKeys: matrixMediaSourceParamKeys,
       });
 
       expect(args).toMatchObject({

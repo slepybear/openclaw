@@ -52,6 +52,7 @@ import {
   parseInteractiveParam,
   readBooleanParam,
   resolveAttachmentMediaPolicy,
+  resolveExtraActionMediaSourceParamKeys,
 } from "./message-action-params.js";
 import {
   prepareOutboundMirrorRoute,
@@ -849,16 +850,27 @@ export async function runMessageAction(
     sandboxRoot: input.sandboxRoot,
     mediaLocalRoots: getAgentScopedMediaLocalRoots(cfg, resolvedAgentId),
   });
+  const extraActionMediaSourceParamKeys = resolveExtraActionMediaSourceParamKeys({
+    cfg,
+    channel,
+    accountId,
+    sessionKey: input.sessionKey,
+    sessionId: input.sessionId,
+    agentId: resolvedAgentId,
+    requesterSenderId: input.requesterSenderId,
+    senderIsOwner: input.senderIsOwner,
+  });
 
   await normalizeSandboxMediaParams({
     args: params,
     mediaPolicy: normalizationPolicy,
+    extraParamKeys: extraActionMediaSourceParamKeys,
   });
 
   const mediaAccess = resolveAgentScopedOutboundMediaAccess({
     cfg,
     agentId: resolvedAgentId,
-    mediaSources: collectActionMediaSourceHints(params),
+    mediaSources: collectActionMediaSourceHints(params, extraActionMediaSourceParamKeys),
     sessionKey: input.sessionKey,
     messageProvider: input.sessionKey ? undefined : channel,
     accountId: input.sessionKey ? (input.requesterAccountId ?? accountId) : accountId,

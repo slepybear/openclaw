@@ -14,6 +14,7 @@ import {
   listChannelMessageActions,
   listChannelMessageCapabilities,
   listChannelMessageCapabilitiesForChannel,
+  resolveChannelMessageToolMediaSourceParamKeys,
   resolveChannelMessageToolSchemaProperties,
 } from "./message-action-discovery.js";
 import type { ChannelMessageCapability } from "./message-capabilities.js";
@@ -197,6 +198,42 @@ describe("message action capability checks", () => {
         channel: "demo-unified",
       }),
     ).toHaveProperty("components");
+  });
+
+  it("derives plugin-owned media-source params from message-tool discovery", () => {
+    const mediaPlugin: ChannelPlugin = {
+      ...createChannelTestPluginBase({
+        id: "demo-media",
+        label: "Demo Media",
+        capabilities: { chatTypes: ["direct", "group"] },
+        config: {
+          listAccountIds: () => ["default"],
+        },
+      }),
+      actions: {
+        describeMessageTool: () => ({
+          actions: ["set-profile"],
+          mediaSourceParams: ["avatarUrl", "avatarPath"],
+          schema: {
+            properties: {
+              avatarUrl: Type.Optional(Type.String({ description: "Remote avatar URL" })),
+              avatarPath: Type.Optional(Type.String({ description: "Local avatar path" })),
+              displayName: Type.Optional(Type.String()),
+            },
+          },
+        }),
+      },
+    };
+    setActivePluginRegistry(
+      createTestRegistry([{ pluginId: "demo-media", source: "test", plugin: mediaPlugin }]),
+    );
+
+    expect(
+      resolveChannelMessageToolMediaSourceParamKeys({
+        cfg: {} as OpenClawConfig,
+        channel: "demo-media",
+      }),
+    ).toEqual(["avatarUrl", "avatarPath"]);
   });
 
   it("skips crashing action/capability discovery paths and logs once", () => {
